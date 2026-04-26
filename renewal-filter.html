@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="ar" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Client Renewal Date Filter</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --maroon: #6B1535;
+    --maroon-mid: #8D1F46;
+    --maroon-light: #F7EDF1;
+    --maroon-border: #C97B9A;
+    --bg: #F4F2F0;
+    --surface: #FFFFFF;
+    --surface2: #F9F8F7;
+    --border: #E2DDD9;
+    --border2: #CCC8C3;
+    --text: #1A1714;
+    --text2: #6B6560;
+    --text3: #9E9891;
+    --red-bg: #FEF0F0; --red-text: #9B2C2C; --red-border: #F5B8B8;
+    --amber-bg: #FEF8EE; --amber-text: #7D4A0A; --amber-border: #F5D68A;
+    --green-bg: #F0F9E8; --green-text: #2D6A10; --green-border: #A8D87A;
+    --blue-bg: #EEF4FD; --blue-text: #1A4E8C; --blue-border: #A8C8F0;
+    --radius: 10px; --radius-sm: 6px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.10);
+  }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* Top bar */
+  header {
+    background: var(--maroon);
+    color: white;
+    padding: 0 2rem;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 2px 8px rgba(107,21,53,0.3);
+  }
+  header .logo {
+    width: 32px; height: 32px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+  header h1 { font-size: 16px; font-weight: 600; letter-spacing: 0.01em; }
+  header .subtitle { font-size: 12px; opacity: 0.65; margin-left: auto; }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1.5rem; }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    margin-bottom: 1.25rem;
+    overflow: hidden;
+  }
+  .card-header {
+    padding: .875rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-header .icon {
+    width: 28px; height: 28px;
+    background: var(--maroon-light);
+    border-radius: var(--radius-sm);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; color: var(--maroon);
+  }
+  .card-header h2 { font-size: 13px; font-weight: 600; }
+  .card-header .badge {
+    margin-left: auto;
+    font-size: 11px; font-weight: 600;
+    background: var(--maroon-light); color: var(--maroon);
+    padding: 2px 8px; border-radius: 20px;
+  }
+  .card-body { padding: 1.25rem; }
+
+  /* Upload zone */
+  .upload-zone {
+    border: 2px dashed var(--border2);
+    border-radius: var(--radius);
+    padding: 2.5rem 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--surface2);
+  }
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--maroon-border);
+    background: var(--maroon-light);
+  }
+  .upload-icon {
+    width: 52px; height: 52px;
+    background: var(--maroon-light);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 1rem;
+    font-size: 22px; color: var(--maroon);
+  }
+  .upload-zone h3 { font-size: 15px; font-weight: 600; margin-bottom: 6px; color: var(--text); }
+  .upload-zone p { font-size: 12px; color: var(--text2); margin-bottom: 1.25rem; }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 18px;
+    border-radius: var(--radius-sm);
+    font-size: 13px; font-weight: 500;
+    cursor: pointer; border: none; outline: none;
+    transition: all 0.15s; text-decoration: none;
+  }
+  .btn-primary { background: var(--maroon); color: white; }
+  .btn-primary:hover { background: var(--maroon-mid); }
+  .btn-outline {
+    background: transparent; color: var(--maroon);
+    border: 1.5px solid var(--maroon-border);
+  }
+  .btn-outline:hover { background: var(--maroon-light); }
+  .btn-sm { padding: 5px 12px; font-size: 12px; }
+
+  /* Divider */
+  .or-divider {
+    display: flex; align-items: center; gap: 12px;
+    margin: 1rem 0; color: var(--text3); font-size: 12px;
+  }
+  .or-divider::before, .or-divider::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+  /* Form elements */
+  label.field-label { display: block; font-size: 11px; font-weight: 600; color: var(--text2); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.05em; }
+  input[type=date], input[type=text], select, textarea {
+    width: 100%; padding: 8px 12px;
+    border: 1px solid var(--border2); border-radius: var(--radius-sm);
+    font-size: 13px; background: var(--surface);
+    color: var(--text); outline: none;
+    transition: border-color 0.15s;
+  }
+  input[type=date]:focus, select:focus, textarea:focus {
+    border-color: var(--maroon); box-shadow: 0 0 0 3px rgba(107,21,53,0.1);
+  }
+  textarea { height: 80px; resize: vertical; font-family: monospace; font-size: 11px; }
+
+  /* Steps */
+  .steps { display: flex; align-items: center; gap: 6px; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .step { display: flex; align-items: center; gap: 6px; }
+  .step-num {
+    width: 26px; height: 26px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 600; flex-shrink: 0;
+    transition: all 0.3s;
+  }
+  .step-num.done { background: var(--maroon); color: white; }
+  .step-num.active { background: var(--maroon); color: white; box-shadow: 0 0 0 3px rgba(107,21,53,0.2); }
+  .step-num.inactive { background: var(--border); color: var(--text2); }
+  .step-label { font-size: 12px; color: var(--text2); font-weight: 500; }
+  .step-sep { flex: 1; min-width: 20px; height: 1px; background: var(--border); }
+
+  /* Filter bar */
+  .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
+
+  /* Stats */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 1.25rem; }
+  .stat-card { border-radius: var(--radius); padding: 1rem; }
+  .stat-card .label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .stat-card .value { font-size: 26px; font-weight: 700; line-height: 1; }
+  .stat-neutral { background: var(--surface2); border: 1px solid var(--border); }
+  .stat-neutral .label { color: var(--text2); }
+  .stat-neutral .value { color: var(--text); }
+  .stat-red { background: var(--red-bg); border: 1px solid var(--red-border); }
+  .stat-red .label { color: var(--red-text); }
+  .stat-red .value { color: var(--red-text); }
+  .stat-amber { background: var(--amber-bg); border: 1px solid var(--amber-border); }
+  .stat-amber .label { color: var(--amber-text); }
+  .stat-amber .value { color: var(--amber-text); }
+  .stat-green { background: var(--green-bg); border: 1px solid var(--green-border); }
+  .stat-green .label { color: var(--green-text); }
+  .stat-green .value { color: var(--green-text); }
+
+  /* Result items */
+  .team-block { margin-bottom: 1.5rem; }
+  .team-title {
+    display: flex; align-items: center; gap: 8px;
+    padding: .625rem .875rem;
+    background: var(--maroon-light);
+    border: 1px solid var(--maroon-border);
+    border-radius: var(--radius-sm);
+    margin-bottom: 8px;
+  }
+  .team-title span { font-size: 13px; font-weight: 600; color: var(--maroon); }
+  .team-title .count {
+    margin-left: auto;
+    background: var(--maroon); color: white;
+    padding: 1px 8px; border-radius: 20px; font-size: 11px; font-weight: 600;
+  }
+
+  .client-row {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: .75rem 1rem;
+    margin-bottom: 6px;
+    display: flex; align-items: flex-start;
+    gap: 12px; flex-wrap: wrap;
+    transition: border-color 0.15s;
+  }
+  .client-row:hover { border-color: var(--maroon-border); }
+  .client-row.expired { border-left: 3px solid var(--red-text); }
+  .client-row.expiring-soon { border-left: 3px solid #E8A020; }
+  .client-row.ok { border-left: 3px solid var(--green-text); }
+
+  .client-info { flex: 1; min-width: 160px; }
+  .client-name { font-size: 14px; font-weight: 600; direction: rtl; text-align: right; margin-bottom: 2px; }
+  .client-sub { font-size: 12px; color: var(--text2); direction: rtl; text-align: right; }
+
+  .date-info { text-align: right; flex-shrink: 0; }
+  .date-label { font-size: 10px; color: var(--text3); margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+  .chip { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+  .chip-red { background: var(--red-bg); color: var(--red-text); border: 1px solid var(--red-border); }
+  .chip-amber { background: var(--amber-bg); color: var(--amber-text); border: 1px solid var(--amber-border); }
+  .chip-green { background: var(--green-bg); color: var(--green-text); border: 1px solid var(--green-border); }
+
+  .date-sub { font-size: 10px; color: var(--text3); margin-top: 3px; }
+
+  .extra-tags { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; direction: rtl; width: 100%; }
+  .extra-tag { font-size: 11px; background: var(--surface2); border: 1px solid var(--border); padding: 1px 8px; border-radius: 4px; color: var(--text2); }
+
+  /* Status alert */
+  .alert { padding: 10px 14px; border-radius: var(--radius-sm); font-size: 13px; margin-bottom: 1rem; display: none; }
+  .alert-info { background: var(--blue-bg); color: var(--blue-text); border: 1px solid var(--blue-border); }
+  .alert-success { background: var(--green-bg); color: var(--green-text); border: 1px solid var(--green-border); }
+  .alert-error { background: var(--red-bg); color: var(--red-text); border: 1px solid var(--red-border); }
+
+  /* Export button area */
+  .toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 1rem; flex-wrap: wrap; }
+  .toolbar .count-label { font-size: 12px; color: var(--text2); margin-right: auto; }
+
+  /* Empty state */
+  .empty-state { text-align: center; padding: 3rem 1rem; color: var(--text2); }
+  .empty-state .icon { font-size: 40px; margin-bottom: 12px; opacity: 0.4; }
+  .empty-state h3 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+  .empty-state p { font-size: 13px; }
+
+  /* How-to steps */
+  .how-to { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+  .how-to-step { display: flex; gap: 12px; align-items: flex-start; }
+  .how-to-num { width: 28px; height: 28px; background: var(--maroon); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+  .how-to-step p { font-size: 12px; color: var(--text2); margin-top: 2px; }
+  .how-to-step h4 { font-size: 13px; font-weight: 600; }
+
+  /* Print styles */
+  @media print {
+    header, #uploadCard, #filterCard, .toolbar .btn { display: none !important; }
+    body { background: white; }
+    .card { box-shadow: none; }
+  }
+
+  @media (max-width: 600px) {
+    .container { padding: 1rem; }
+    header { padding: 0 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">📋</div>
+  <h1>Client Renewal Filter</h1>
+  <span class="subtitle">فلتر تواريخ التجديد</span>
+</header>
+
+<div class="container">
+
+  <!-- Steps -->
+  <div class="steps" id="stepsBar">
+    <div class="step">
+      <div class="step-num active" id="sn1">1</div>
+      <span class="step-label">Upload CSV</span>
+    </div>
+    <div class="step-sep"></div>
+    <div class="step">
+      <div class="step-num inactive" id="sn2">2</div>
+      <span class="step-label">Set filter</span>
+    </div>
+    <div class="step-sep"></div>
+    <div class="step">
+      <div class="step-num inactive" id="sn3">3</div>
+      <span class="step-label">View results</span>
+    </div>
+  </div>
+
+  <!-- How-to guide -->
+  <div class="card" id="howToCard">
+    <div class="card-header">
+      <div class="icon">💡</div>
+      <h2>How to use</h2>
+    </div>
+    <div class="card-body">
+      <div class="how-to">
+        <div class="how-to-step">
+          <div class="how-to-num">1</div>
+          <div>
+            <h4>Export from Google Sheets</h4>
+            <p>File → Download → Comma-separated values (.csv, current sheet)</p>
+          </div>
+        </div>
+        <div class="how-to-step">
+          <div class="how-to-num">2</div>
+          <div>
+            <h4>Upload the CSV file</h4>
+            <p>Drag & drop or click to choose your file below. All 25 teams are parsed automatically.</p>
+          </div>
+        </div>
+        <div class="how-to-step">
+          <div class="how-to-num">3</div>
+          <div>
+            <h4>Pick a date & filter</h4>
+            <p>All clients whose renewal date is <strong>on or before</strong> your chosen date will appear.</p>
+          </div>
+        </div>
+        <div class="how-to-step">
+          <div class="how-to-num">4</div>
+          <div>
+            <h4>Export results</h4>
+            <p>Click "Export CSV" to download the filtered results as a spreadsheet.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upload card -->
+  <div class="card" id="uploadCard">
+    <div class="card-header">
+      <div class="icon">📁</div>
+      <h2>Upload your Google Sheet CSV</h2>
+    </div>
+    <div class="card-body">
+      <div class="upload-zone" id="dropZone" onclick="document.getElementById('csvFile').click()">
+        <div class="upload-icon">⬆</div>
+        <h3>Drop your CSV file here</h3>
+        <p>Drag & drop or click to browse — exports from Google Sheets work directly</p>
+        <button class="btn btn-primary" onclick="event.stopPropagation(); document.getElementById('csvFile').click()">
+          Choose CSV file
+        </button>
+        <input type="file" id="csvFile" accept=".csv,.txt" style="display:none">
+      </div>
+
+      <div class="or-divider">or paste CSV data directly</div>
+
+      <div style="margin-bottom: 10px;">
+        <label class="field-label">Paste CSV data</label>
+        <textarea id="csvPaste" placeholder="Paste your CSV data here..."></textarea>
+      </div>
+      <button class="btn btn-outline" onclick="parsePastedCSV()">Parse pasted data →</button>
+    </div>
+  </div>
+
+  <!-- Status -->
+  <div class="alert alert-info" id="alertBox"></div>
+
+  <!-- Filter card -->
+  <div class="card" id="filterCard" style="display:none">
+    <div class="card-header">
+      <div class="icon">🔍</div>
+      <h2>Filter settings</h2>
+      <span class="badge" id="entryCountBadge"></span>
+    </div>
+    <div class="card-body">
+      <div class="filter-grid">
+        <div>
+          <label class="field-label">Show clients expiring on or before</label>
+          <input type="date" id="filterDate" oninput="applyFilter()">
+        </div>
+        <div>
+          <label class="field-label">Team</label>
+          <select id="teamSel" onchange="applyFilter()">
+            <option value="">All teams</option>
+          </select>
+        </div>
+        <div>
+          <label class="field-label">Date column type</label>
+          <select id="colType" onchange="applyFilter()">
+            <option value="renewal">Renewal date / تاريخ التجديد</option>
+            <option value="any">Any date column</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="resultsSection" style="display:none">
+    <div class="stats-grid" id="statsGrid"></div>
+    <div class="toolbar">
+      <span class="count-label" id="countLabel"></span>
+      <button class="btn btn-outline btn-sm" onclick="exportCSV()">⬇ Export results as CSV</button>
+      <button class="btn btn-outline btn-sm" onclick="window.print()">🖨 Print</button>
+    </div>
+    <div id="resultsList"></div>
+  </div>
+
+</div>
+
+<script>
+var allEntries = [], teamNames = [], headerMap = {}, renewalCols = new Set();
+var lastFiltered = [];
+
+/* ── Date parsing ── */
+function pDate(s) {
+  if (!s) return null;
+  s = s.toString().trim();
+  var m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (m) return new Date(+m[3], +m[2]-1, +m[1]);
+  m = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+  if (m) return new Date(+m[1], +m[2]-1, +m[3]);
+  m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2})$/);
+  if (m) return new Date(2000 + +m[3], +m[2]-1, +m[1]);
+  return null;
+}
+function fmtDate(d) {
+  if (!d) return '';
+  return ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+'/'+d.getFullYear();
+}
+function isDateStr(s) { return s && /^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}$/.test(s.toString().trim()); }
+
+/* ── Alert ── */
+function showAlert(msg, type) {
+  var el = document.getElementById('alertBox');
+  el.className = 'alert alert-' + type;
+  el.style.display = 'block';
+  el.textContent = msg;
+}
+
+/* ── Step indicator ── */
+function setStep(n) {
+  for (var i = 1; i <= 3; i++) {
+    var el = document.getElementById('sn'+i);
+    el.className = 'step-num ' + (i < n ? 'done' : i === n ? 'active' : 'inactive');
+  }
+}
+
+/* ── Process CSV data ── */
+function processData(rows) {
+  allEntries = []; teamNames = []; headerMap = {}; renewalCols = new Set();
+
+  // Find TEAM header row
+  var teamRowIdx = -1;
+  for (var i = 0; i < Math.min(10, rows.length); i++) {
+    if (rows[i].some(function(c){ return c && c.toString().toUpperCase().indexOf('TEAM') >= 0; })) {
+      teamRowIdx = i; break;
+    }
+  }
+
+  // Build column → team mapping
+  var colTeam = {};
+  if (teamRowIdx >= 0) {
+    var cur = '';
+    rows[teamRowIdx].forEach(function(cell, c) {
+      if (cell && cell.toString().toUpperCase().indexOf('TEAM') >= 0) {
+        cur = cell.toString().trim();
+        if (teamNames.indexOf(cur) < 0) teamNames.push(cur);
+      }
+      if (cur) colTeam[c] = cur;
+    });
+  }
+
+  // Find header rows with Arabic column names
+  var renewalKw = ['قادم', 'تجديد', 'انتهاء', 'نهاية', 'renewal'];
+  var allDateCols = new Set();
+
+  for (var i = 0; i < Math.min(15, rows.length); i++) {
+    rows[i].forEach(function(cell, c) {
+      if (!cell) return;
+      var s = cell.toString().trim();
+      if (s.indexOf('تاريخ') >= 0 || s.toLowerCase().indexOf('date') >= 0) {
+        headerMap[c] = s;
+        allDateCols.add(c);
+        if (renewalKw.some(function(k){ return s.indexOf(k) >= 0; })) {
+          renewalCols.add(c);
+        }
+      } else if (s.indexOf('اسم') >= 0 || s.indexOf('name') >= 0) {
+        headerMap[c] = s;
+      }
+    });
+  }
+
+  // Use renewal cols if found, else all date cols
+  var targetCols = renewalCols.size > 0 ? renewalCols : allDateCols;
+
+  // Fallback: scan data rows for date patterns
+  if (targetCols.size === 0) {
+    for (var r = teamRowIdx + 2; r < Math.min(teamRowIdx + 30, rows.length); r++) {
+      rows[r].forEach(function(cell, c) {
+        if (isDateStr(cell)) { allDateCols.add(c); targetCols.add(c); }
+      });
+    }
+  }
+
+  var dataStart = Math.max(teamRowIdx + 2, 3);
+  var seen = {};
+
+  for (var r = dataStart; r < rows.length; r++) {
+    var row = rows[r];
+    if (!row || row.every(function(c){ return !c || !c.toString().trim(); })) continue;
+
+    targetCols.forEach(function(c) {
+      var cell = row[c];
+      if (!cell || !cell.toString().trim()) return;
+      var d = pDate(cell.toString());
+      if (!d || d.getFullYear() < 2000 || d.getFullYear() > 2100) return;
+
+      var key = r + '_' + c;
+      if (seen[key]) return;
+      seen[key] = true;
+
+      var team = colTeam[c] || 'Unknown team';
+      var clientName = '', respName = '';
+
+      // Search nearby columns for text (client name)
+      for (var dc = c - 1; dc >= Math.max(0, c - 8); dc--) {
+        var v = row[dc] ? row[dc].toString().trim() : '';
+        if (v && !isDateStr(v) && isNaN(v) && v.length > 1) {
+          if (!clientName) clientName = v;
+          else if (!respName) { respName = v; break; }
+        }
+      }
+
+      // All row cells for context
+      var extra = [];
+      row.forEach(function(v, ci) {
+        if (v && v.toString().trim() && ci !== c) extra.push(v.toString().trim());
+      });
+
+      allEntries.push({
+        date: d,
+        dateStr: cell.toString().trim(),
+        team: team,
+        clientName: clientName,
+        respName: respName,
+        colHeader: headerMap[c] || 'date',
+        rowIdx: r,
+        colIdx: c,
+        extra: extra.slice(0, 10),
+        isRenewal: renewalCols.has(c)
+      });
+    });
+  }
+
+  // Populate team filter
+  var sel = document.getElementById('teamSel');
+  sel.innerHTML = '<option value="">All teams (' + teamNames.length + ')</option>';
+  teamNames.forEach(function(t) {
+    var o = document.createElement('option');
+    o.value = t; o.textContent = t;
+    sel.appendChild(o);
+  });
+
+  document.getElementById('entryCountBadge').textContent = allEntries.length + ' entries / ' + teamNames.length + ' teams';
+  showAlert('✓ Successfully parsed ' + allEntries.length + ' date entries across ' + teamNames.length + ' teams.', 'success');
+  document.getElementById('filterCard').style.display = 'block';
+  document.getElementById('howToCard').style.display = 'none';
+  setStep(2);
+
+  // Default date = today
+  var today = new Date();
+  document.getElementById('filterDate').value = today.toISOString().split('T')[0];
+  applyFilter();
+}
+
+/* ── Apply filter ── */
+function applyFilter() {
+  var dv = document.getElementById('filterDate').value;
+  var teamF = document.getElementById('teamSel').value;
+  var colType = document.getElementById('colType').value;
+
+  document.getElementById('resultsSection').style.display = 'block';
+  setStep(3);
+
+  if (!dv) {
+    document.getElementById('resultsList').innerHTML = '<div class="empty-state"><div class="icon">📅</div><h3>Select a date above</h3><p>Choose a date to see clients expiring by that date.</p></div>';
+    return;
+  }
+
+  var fDate = new Date(dv);
+  fDate.setHours(23, 59, 59);
+
+  var hasAnyRenewal = allEntries.some(function(e){ return e.isRenewal; });
+
+  lastFiltered = allEntries.filter(function(e) {
+    if (e.date > fDate) return false;
+    if (teamF && e.team !== teamF) return false;
+    if (colType === 'renewal' && hasAnyRenewal && !e.isRenewal) return false;
+    return true;
+  });
+
+  lastFiltered.sort(function(a, b){ return a.date - b.date; });
+
+  var today = new Date(); today.setHours(0,0,0,0);
+  var expired = 0, expToday = 0, upcoming7 = 0, upcoming = 0;
+  lastFiltered.forEach(function(e) {
+    var ed = new Date(e.date); ed.setHours(0,0,0,0);
+    var diff = Math.floor((ed - today) / 86400000);
+    if (diff < 0) expired++;
+    else if (diff === 0) expToday++;
+    else if (diff <= 7) upcoming7++;
+    else upcoming++;
+  });
+
+  document.getElementById('statsGrid').innerHTML =
+    stat('Total matches', lastFiltered.length, 'neutral') +
+    stat('Expired', expired, 'red') +
+    stat('Expires today', expToday, 'red') +
+    stat('Within 7 days', upcoming7, 'amber') +
+    stat('After 7 days', upcoming, 'green');
+
+  document.getElementById('countLabel').textContent = 'Showing ' + lastFiltered.length + ' client' + (lastFiltered.length !== 1 ? 's' : '');
+
+  if (lastFiltered.length === 0) {
+    document.getElementById('resultsList').innerHTML = '<div class="empty-state"><div class="icon">✅</div><h3>No clients expiring by this date</h3><p>Try selecting a later date or change the team filter.</p></div>';
+    return;
+  }
+
+  // Group by team
+  var byTeam = {};
+  lastFiltered.forEach(function(e) {
+    if (!byTeam[e.team]) byTeam[e.team] = [];
+    byTeam[e.team].push(e);
+  });
+
+  var html = '';
+  Object.keys(byTeam).forEach(function(team) {
+    var entries = byTeam[team];
+    html += '<div class="team-block">';
+    html += '<div class="team-title"><span>📁 ' + team + '</span><span class="count">' + entries.length + ' clients</span></div>';
+
+    entries.forEach(function(e) {
+      var ed = new Date(e.date); ed.setHours(0,0,0,0);
+      var diff = Math.floor((ed - today) / 86400000);
+      var chipCls, statusTxt, rowCls;
+      if (diff < 0) {
+        chipCls = 'chip-red'; rowCls = 'expired';
+        statusTxt = 'Expired ' + Math.abs(diff) + ' day' + (Math.abs(diff) !== 1 ? 's' : '') + ' ago';
+      } else if (diff === 0) {
+        chipCls = 'chip-red'; rowCls = 'expired'; statusTxt = 'Expires today';
+      } else if (diff <= 7) {
+        chipCls = 'chip-amber'; rowCls = 'expiring-soon'; statusTxt = 'Expires in ' + diff + ' day' + (diff !== 1 ? 's' : '');
+      } else {
+        chipCls = 'chip-green'; rowCls = 'ok'; statusTxt = 'Expires in ' + diff + ' days';
+      }
+
+      html += '<div class="client-row ' + rowCls + '">';
+      html += '<div class="client-info">';
+      html += '<div class="client-name">' + (e.clientName || '—') + '</div>';
+      if (e.respName) html += '<div class="client-sub">👤 ' + e.respName + '</div>';
+      html += '</div>';
+      html += '<div class="date-info">';
+      html += '<div class="date-label">' + e.colHeader + '</div>';
+      html += '<span class="chip ' + chipCls + '">' + e.dateStr + '</span>';
+      html += '<div class="date-sub">' + statusTxt + '</div>';
+      html += '</div>';
+
+      var extras = e.extra.filter(function(x){ return x !== e.clientName && x !== e.respName && x.length > 1 && !isDateStr(x); });
+      if (extras.length > 0) {
+        html += '<div class="extra-tags">';
+        extras.slice(0, 6).forEach(function(x){ html += '<span class="extra-tag">' + x + '</span>'; });
+        html += '</div>';
+      }
+      html += '</div>';
+    });
+    html += '</div>';
+  });
+
+  document.getElementById('resultsList').innerHTML = html;
+}
+
+function stat(label, value, type) {
+  return '<div class="stat-card stat-' + type + '"><div class="label">' + label + '</div><div class="value">' + value + '</div></div>';
+}
+
+/* ── Export CSV ── */
+function exportCSV() {
+  if (!lastFiltered.length) return;
+  var rows = [['Team', 'Client Name', 'Responsible', 'Date Column', 'Renewal Date', 'Status']];
+  var today = new Date(); today.setHours(0,0,0,0);
+  lastFiltered.forEach(function(e) {
+    var ed = new Date(e.date); ed.setHours(0,0,0,0);
+    var diff = Math.floor((ed - today) / 86400000);
+    var status = diff < 0 ? 'Expired' : diff === 0 ? 'Expires today' : 'Expiring in ' + diff + ' days';
+    rows.push([e.team, e.clientName, e.respName, e.colHeader, e.dateStr, status]);
+  });
+  var csv = rows.map(function(r){ return r.map(function(c){ return '"' + (c||'').replace(/"/g,'""') + '"'; }).join(','); }).join('\r\n');
+  var blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a'); a.href = url; a.download = 'renewal-filter-results.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* ── File upload ── */
+document.getElementById('csvFile').addEventListener('change', function(e) {
+  var f = e.target.files[0]; if (!f) return;
+  showAlert('Parsing file...', 'info');
+  Papa.parse(f, {
+    complete: function(r) { processData(r.data); },
+    error: function(err) { showAlert('Error: ' + err.message, 'error'); }
+  });
+});
+
+function parsePastedCSV() {
+  var t = document.getElementById('csvPaste').value.trim();
+  if (!t) return;
+  var r = Papa.parse(t, { skipEmptyLines: false });
+  processData(r.data);
+}
+
+/* ── Drag and drop ── */
+var dz = document.getElementById('dropZone');
+dz.addEventListener('dragover', function(e) { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', function() { dz.classList.remove('drag-over'); });
+dz.addEventListener('drop', function(e) {
+  e.preventDefault(); dz.classList.remove('drag-over');
+  var f = e.dataTransfer.files[0];
+  if (f) Papa.parse(f, { complete: function(r){ processData(r.data); }, error: function(err){ showAlert('Error: '+err.message,'error'); } });
+});
+</script>
+</body>
+</html>
